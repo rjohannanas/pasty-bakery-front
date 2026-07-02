@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
+import { apiClient } from '@/lib/api';
 import { MainLayout } from '@/components/layout/main-layout';
 import { AddItemModal } from '@/components/config/add-item-modal';
+import { MatrixEditor } from '@/components/config/matrix-editor';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
@@ -13,47 +15,92 @@ interface ConfigItem {
   id: string;
   name: string;
   type: 'product' | 'ingredient' | 'machine';
+  value?: number;
 }
 
 export default function ConfigPage() {
   const router = useRouter();
   const { user } = useAppStore();
-  const [products, setProducts] = useState<ConfigItem[]>([
-    { id: '1', name: 'Croissant', type: 'product' },
-    { id: '2', name: 'Donut', type: 'product' },
-    { id: '3', name: 'Bread', type: 'product' },
-  ]);
-  const [ingredients, setIngredients] = useState<ConfigItem[]>([
-    { id: '1', name: 'Flour', type: 'ingredient' },
-    { id: '2', name: 'Sugar', type: 'ingredient' },
-    { id: '3', name: 'Butter', type: 'ingredient' },
-  ]);
-  const [machines, setMachines] = useState<ConfigItem[]>([
-    { id: '1', name: 'Oven', type: 'machine' },
-    { id: '2', name: 'Mixer', type: 'machine' },
-  ]);
+  const [products, setProducts] = useState<ConfigItem[]>([]);
+  const [ingredients, setIngredients] = useState<ConfigItem[]>([]);
+  const [machines, setMachines] = useState<ConfigItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'product' | 'ingredient' | 'machine'>('product');
 
   useEffect(() => {
     if (!user) {
       router.push('/');
+      return;
     }
+    fetchData();
   }, [user, router]);
 
-  const handleAddItem = (name: string) => {
-    const id = Date.now().toString();
-    const newItem: ConfigItem = { id, name, type: modalType };
-    
-    if (modalType === 'product') {
-      setProducts([...products, newItem]);
-    } else if (modalType === 'ingredient') {
-      setIngredients([...ingredients, newItem]);
-    } else {
-      setMachines([...machines, newItem]);
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [productsData, ingredientsData, machinesData] = await Promise.all([
+        apiClient.getProducts().catch(() => []),
+        apiClient.getIngredients().catch(() => []),
+        apiClient.getMachines().catch(() => []),
+      ]);
+
+      setProducts(
+        (Array.isArray(productsData) ? productsData : []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          type: 'product',
+        }))
+      );
+      setIngredients(
+        (Array.isArray(ingredientsData) ? ingredientsData : []).map((i: any) => ({
+          id: i.id,
+          name: i.name,
+          type: 'ingredient',
+        }))
+      );
+      setMachines(
+        (Array.isArray(machinesData) ? machinesData : []).map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          type: 'machine',
+        }))
+      );
+    } catch (error) {
+      console.error('[v0] Error fetching config data:', error);
+      toast.error('Failed to load configuration');
+    } finally {
+      setIsLoading(false);
     }
-    
-    toast.success(`${modalType.charAt(0).toUpperCase() + modalType.slice(1)} added successfully`);
+  };
+
+  const handleAddItem = async (name: string) => {
+    try {
+      let response: any;
+      if (modalType === 'product') {
+        response = await apiClient.createProduct({ name });
+      } else if (modalType === 'ingredient') {
+        response = await apiClient.createIngredient({ name });
+      } else {
+        response = await apiClient.createMachine({ name });
+      }
+
+      const newItem: ConfigItem = { id: response?.id || Date.now().toString(), name: response?.name || name, type: modalType };
+      
+      if (modalType === 'product') {
+        setProducts([...products, newItem]);
+      } else if (modalType === 'ingredient') {
+        setIngredients([...ingredients, newItem]);
+      } else {
+        setMachines([...machines, newItem]);
+      }
+      
+      toast.success(`${modalType.charAt(0).toUpperCase() + modalType.slice(1)} added successfully`);
+      setModalOpen(false);
+    } catch (error) {
+      console.error('[v0] Error adding item:', error);
+      toast.error('Failed to add item');
+    }
   };
 
   const openModal = (type: 'product' | 'ingredient' | 'machine') => {
@@ -61,7 +108,47 @@ export default function ConfigPage() {
     setModalOpen(true);
   };
 
+  const handleDeleteItem = async (id: string, type: 'product' | 'ingredient' | 'machine') => {
+    try {
+      if (type === 'product') {
+        await apiClient.deleteProduct(id);
+        setProducts(products.filter((p) => p.id !== id));
+      } else if (type === 'ingredient') {
+        await apiClient.deleteIngredient(id);
+        setIngredients(ingredients.filter((i) => i.id !== id));
+      } else {
+        await apiClient.deleteMachine(id);
+        setMachines(machines.filter((m) => m.id !== id));
+      }
+      toast.success('Item deleted successfully');
+    } catch (error) {
+      console.error('[v0] Error deleting item:', error);
+      toast.error('Failed to delete item');
+    }
+  };
+
+  const handleSaveMatrix = async (productId: string, itemId: string, value: number) => {
+    try {
+      // This will be called from MatrixEditor for each cell
+      // Implementation depends on which matrix type (Q, T, CM)
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate API call
+    } catch (error) {
+      console.error('[v0] Error saving matrix:', error);
+      throw error;
+    }
+  };
+
   if (!user) return null;
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Loading configuration...</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -78,7 +165,7 @@ export default function ConfigPage() {
             items={products}
             onAdd={() => openModal('product')}
             onEdit={() => toast.info('Edit product feature coming soon')}
-            onDelete={(id) => setProducts(products.filter((p) => p.id !== id))}
+            onDelete={(id) => handleDeleteItem(id, 'product')}
           />
 
           <ConfigSection
@@ -87,7 +174,7 @@ export default function ConfigPage() {
             items={ingredients}
             onAdd={() => openModal('ingredient')}
             onEdit={() => toast.info('Edit ingredient feature coming soon')}
-            onDelete={(id) => setIngredients(ingredients.filter((i) => i.id !== id))}
+            onDelete={(id) => handleDeleteItem(id, 'ingredient')}
           />
 
           <ConfigSection
@@ -96,7 +183,7 @@ export default function ConfigPage() {
             items={machines}
             onAdd={() => openModal('machine')}
             onEdit={() => toast.info('Edit machine feature coming soon')}
-            onDelete={(id) => setMachines(machines.filter((m) => m.id !== id))}
+            onDelete={(id) => handleDeleteItem(id, 'machine')}
           />
         </div>
 
@@ -108,15 +195,29 @@ export default function ConfigPage() {
           onAdd={handleAddItem}
         />
 
-        <div className="bg-card rounded-lg border border-border p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Consumption Matrices</h2>
-          <p className="text-muted-foreground mb-4">
-            Define the consumption matrices (Q, T, CM) for each product
-          </p>
-          <Button variant="outline" disabled>
-            Configure Matrices
-          </Button>
-        </div>
+        {products.length > 0 && ingredients.length > 0 && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-foreground">Consumption Matrices</h2>
+            
+            <MatrixEditor
+              title="Q Matrix - Ingredient Consumption (per product unit)"
+              rows={products}
+              columns={ingredients}
+              matrixType="Q"
+              onSave={handleSaveMatrix}
+            />
+            
+            {machines.length > 0 && (
+              <MatrixEditor
+                title="T Matrix - Machine Time (per product unit)"
+                rows={products}
+                columns={machines}
+                matrixType="T"
+                onSave={handleSaveMatrix}
+              />
+            )}
+          </div>
+        )}
       </div>
     </MainLayout>
   );

@@ -15,8 +15,10 @@ export interface OptimizationResult {
   batch_active: Record<string, number>;
   variety_flag: Record<string, boolean>;
   expected_profit: number;
-  status: 'pending' | 'completed' | 'failed';
+  status: 'pending' | 'completed' | 'failed' | 'done' | 'error' | 'cancelled' | 'processing';
   error?: string;
+  result?: OptimizationResult;
+  progress?: number;
 }
 
 class ApiClient {
@@ -69,32 +71,168 @@ class ApiClient {
     return this.post('/optimize', params);
   }
 
+  async getOptimizationStatus(jobId: string) {
+    return this.get(`/optimize/${jobId}`);
+  }
+
+  async getQueueStatus() {
+    return this.get('/optimize/queue/status');
+  }
+
   async getResults(id?: string): Promise<OptimizationResult | OptimizationResult[]> {
     return this.get(id ? `/results/${id}` : '/results');
   }
 
+  async getLogs(jobId?: string) {
+    return this.get(jobId ? `/logs/lingo/${jobId}` : '/logs/lingo');
+  }
+
+  // Products endpoints
   async getProducts() {
     return this.get('/products');
   }
 
-  async getIngredients() {
-    return this.get('/ingredients');
-  }
-
-  async getMachines() {
-    return this.get('/machines');
+  async getProduct(id: string) {
+    return this.get(`/products/${id}`);
   }
 
   async createProduct(data: unknown) {
     return this.post('/products', data);
   }
 
+  async updateProduct(id: string, data: unknown) {
+    return this.put(`/products/${id}`, data);
+  }
+
+  async deleteProduct(id: string) {
+    return this.delete(`/products/${id}`);
+  }
+
+  // Product ingredients (Q matrix)
+  async getProductIngredients(productId: string) {
+    return this.get(`/products/${productId}/ingredients`);
+  }
+
+  async addProductIngredient(productId: string, data: unknown) {
+    return this.post(`/products/${productId}/ingredients`, data);
+  }
+
+  async updateProductIngredient(productId: string, ingredientId: string, data: unknown) {
+    return this.put(`/products/${productId}/ingredients/${ingredientId}`, data);
+  }
+
+  async deleteProductIngredient(productId: string, ingredientId: string) {
+    return this.delete(`/products/${productId}/ingredients/${ingredientId}`);
+  }
+
+  // Product machines (T matrix)
+  async getProductMachines(productId: string) {
+    return this.get(`/products/${productId}/machines`);
+  }
+
+  async addProductMachine(productId: string, data: unknown) {
+    return this.post(`/products/${productId}/machines`, data);
+  }
+
+  async updateProductMachine(productId: string, machineId: string, data: unknown) {
+    return this.put(`/products/${productId}/machines/${machineId}`, data);
+  }
+
+  async deleteProductMachine(productId: string, machineId: string) {
+    return this.delete(`/products/${productId}/machines/${machineId}`);
+  }
+
+  // Product operational resources (CM matrix)
+  async getProductResources(productId: string) {
+    return this.get(`/products/${productId}/operational-resources`);
+  }
+
+  async addProductResource(productId: string, data: unknown) {
+    return this.post(`/products/${productId}/operational-resources`, data);
+  }
+
+  async updateProductResource(productId: string, resourceId: string, data: unknown) {
+    return this.put(`/products/${productId}/operational-resources/${resourceId}`, data);
+  }
+
+  async deleteProductResource(productId: string, resourceId: string) {
+    return this.delete(`/products/${productId}/operational-resources/${resourceId}`);
+  }
+
+  // Ingredients endpoints
+  async getIngredients() {
+    return this.get('/ingredients');
+  }
+
+  async getIngredient(id: string) {
+    return this.get(`/ingredients/${id}`);
+  }
+
   async createIngredient(data: unknown) {
     return this.post('/ingredients', data);
   }
 
+  async updateIngredient(id: string, data: unknown) {
+    return this.put(`/ingredients/${id}`, data);
+  }
+
+  async deleteIngredient(id: string) {
+    return this.delete(`/ingredients/${id}`);
+  }
+
+  // Machines endpoints
+  async getMachines() {
+    return this.get('/machines');
+  }
+
+  async getMachine(id: string) {
+    return this.get(`/machines/${id}`);
+  }
+
   async createMachine(data: unknown) {
     return this.post('/machines', data);
+  }
+
+  async updateMachine(id: string, data: unknown) {
+    return this.put(`/machines/${id}`, data);
+  }
+
+  async deleteMachine(id: string) {
+    return this.delete(`/machines/${id}`);
+  }
+
+  // Stocks endpoints
+  async getStocks() {
+    return this.get('/stocks');
+  }
+
+  async getStock(id: string) {
+    return this.get(`/stocks/${id}`);
+  }
+
+  async createStock(data: unknown) {
+    return this.post('/stocks', data);
+  }
+
+  async updateStock(id: string, data: unknown) {
+    return this.put(`/stocks/${id}`, data);
+  }
+
+  async deleteStock(id: string) {
+    return this.delete(`/stocks/${id}`);
+  }
+
+  // Resources endpoints
+  async getResources() {
+    return this.get('/resources');
+  }
+
+  async createResource(data: unknown) {
+    return this.post('/resources', data);
+  }
+
+  async deleteResource(id: string) {
+    return this.delete(`/resources/${id}`);
   }
 }
 
