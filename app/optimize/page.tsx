@@ -1,18 +1,21 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
-import { apiClient } from '@/lib/api';
+import { apiClient, createWebSocketConnection } from '@/lib/api';
 import { MainLayout } from '@/components/layout/main-layout';
 import { OptimizationStatus } from '@/components/optimize/optimization-status';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Clock, Zap } from 'lucide-react';
 
 export default function OptimizePage() {
   const router = useRouter();
   const { user, setCurrentOptimization, optimizationStatus, setOptimizationStatus } = useAppStore();
+  const wsRef = useRef<WebSocket | null>(null);
+  const jobIdRef = useRef<string | null>(null);
+
   const [stock, setStock] = useState<Record<string, number>>({
     harina: 50,
     azucar: 30,
@@ -26,6 +29,8 @@ export default function OptimizePage() {
   const [targetProduction, setTargetProduction] = useState(100);
   const [minVariety, setMinVariety] = useState(3);
   const [isLoading, setIsLoading] = useState(false);
+  const [jobStatus, setJobStatus] = useState<string>('idle');
+  const [jobProgress, setJobProgress] = useState<number>(0);
 
   useEffect(() => {
     if (!user) {
@@ -33,10 +38,56 @@ export default function OptimizePage() {
     }
   }, [user, router]);
 
+  useEffect(() => {
+    // Setup WebSocket for job status updates
+    wsRef.current = createWebSocketConnection(
+      (data: any) => {
+        console.log('[v0] WebSocket message:', data);
+        
+        if (data?.job_id) {
+          jobIdRef.current = data.job_id;
+        }
+
+        if (data?.status) {
+          const status = data.status as string;
+          setJobStatus(status);
+          setJobProgress(data.progress || 0);
+
+          if (status === 'pending') {
+            toast.loading('Optimization queued...');
+          } else if (status === 'processing') {
+            toast.loading(`Processing... ${Math.round(data.progress || 0)}%`);
+          } else if (status === 'done') {
+            toast.success('Optimization completed successfully!');
+            if (data.result) {
+              setCurrentOptimization(data.result);
+            }
+            setOptimizationStatus('completed');
+            setTimeout(() => router.push('/dashboard'), 1500);
+          } else if (status === 'error' || status === 'cancelled') {
+            toast.error(`Optimization ${status}: ${data.error || 'Unknown error'}`);
+            setOptimizationStatus('failed');
+          }
+        }
+      },
+      (error) => {
+        console.error('[v0] WebSocket error:', error);
+        toast.error('Connection error');
+      }
+    );
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [router, setCurrentOptimization, setOptimizationStatus]);
+
   const handleOptimize = async () => {
     setIsLoading(true);
     setOptimizationStatus('running');
-    toast.loading('Running optimization...');
+    setJobStatus('pending');
+    setJobProgress(0);
 
     try {
       const result = await apiClient.runOptimization({
@@ -46,19 +97,63 @@ export default function OptimizePage() {
         min_variety: minVariety,
       });
 
-      setCurrentOptimization(result);
-      setOptimizationStatus('completed');
-      toast.success('Optimization completed successfully!');
+      jobIdRef.current = result.id;
       
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1500);
+      // Send job ID to WebSocket to subscribe to updates
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ action: 'subscribe', job_id: result.id }));
+      }
+
+      // Also poll for status in case WebSocket doesn't update
+      const pollStatus = setInterval(async () => {
+        try {
+          const statusData = await apiClient.getOptimizationStatus(result.id);
+          const status = (statusData as any)?.status as string;
+          setJobStatus(status);
+          
+          if (status === 'done' || status === 'error' || status === 'cancelled') {
+            clearInterval(pollStatus);
+            if (status === 'done') {
+              if ((statusData as any)?.result) {
+                setCurrentOptimization((statusData as any).result);
+              }
+              setOptimizationStatus('completed');
+              toast.success('Optimization completed!');
+              setTimeout(() => router.push('/dashboard'), 1500);
+            } else {
+              setOptimizationStatus('failed');
+              toast.error(`Optimization ${status}`);
+            }
+          }
+        } catch (err) {
+          console.error('[v0] Poll status error:', err);
+        }
+      }, 2000);
+
+      return () => clearInterval(pollStatus);
     } catch (error) {
       setOptimizationStatus('failed');
+      setJobStatus('error');
       console.error('[v0] Optimization error:', error);
       toast.error('Optimization failed. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const getStatusIcon = () => {
+    switch (jobStatus) {
+      case 'pending':
+        return <Clock className="w-5 h-5 animate-pulse text-amber-500" />;
+      case 'processing':
+        return <Zap className="w-5 h-5 animate-pulse text-blue-500" />;
+      case 'done':
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'error':
+      case 'cancelled':
+        return <AlertCircle className="w-5 h-5 text-red-500" />;
+      default:
+        return null;
     }
   };
 
@@ -140,7 +235,32 @@ export default function OptimizePage() {
               </div>
             </div>
 
-            {optimizationStatus === 'running' && <OptimizationStatus isRunning={true} />}
+            {(optimizationStatus === 'running' || jobStatus !== 'idle') && (
+              <div className="bg-muted rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  {getStatusIcon()}
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground capitalize">
+                      {jobStatus === 'idle' ? 'Ready' : jobStatus}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {jobStatus === 'pending' && 'Waiting in queue...'}
+                      {jobStatus === 'processing' && `Processing... ${Math.round(jobProgress)}%`}
+                      {jobStatus === 'done' && 'Optimization completed!'}
+                      {(jobStatus === 'error' || jobStatus === 'cancelled') && 'Optimization failed'}
+                    </p>
+                  </div>
+                </div>
+                {jobStatus === 'processing' && (
+                  <div className="w-full bg-muted-foreground/20 rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${Math.round(jobProgress)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             <Button
               onClick={handleOptimize}
@@ -150,7 +270,7 @@ export default function OptimizePage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Optimizing...
+                  Starting...
                 </>
               ) : (
                 'Run Optimization'

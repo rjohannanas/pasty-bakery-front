@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import {
   History,
   Menu,
   X,
-  LogOut,
 } from 'lucide-react';
 
 const navigationItems = [
@@ -24,14 +23,7 @@ const navigationItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { sidebarOpen, setSidebarOpen, setUser } = useAppStore();
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('pasty_user');
-    router.push('/');
-  };
+  const { sidebarOpen, setSidebarOpen } = useAppStore();
 
   return (
     <>
@@ -78,16 +70,7 @@ export function Sidebar() {
             ))}
           </nav>
 
-          <div className="p-4 border-t border-sidebar-border">
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2 text-sidebar-foreground"
-              onClick={handleLogout}
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
-            </Button>
-          </div>
+
         </div>
       </aside>
 
