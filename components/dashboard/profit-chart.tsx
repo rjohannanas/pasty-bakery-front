@@ -2,23 +2,23 @@
 
 import React from 'react';
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
-import type { OptimizationResult } from '@/lib/api';
+import type { Optimization } from '@/lib/api';
 
 interface ProfitChartProps {
-  data: OptimizationResult;
+  data: Optimization;
 }
 
 export function ProfitChart({ data }: ProfitChartProps) {
-  const chartData = Object.entries(data.quantity_to_produce).map(([product, quantity]) => ({
-    name: product,
-    value: quantity as number,
+  const chartData = (data.results ?? []).map((row) => ({
+    name: row.product_name ?? row.product?.name ?? `Producto #${row.product_id ?? row.id}`,
+    value: row.quantity_to_produce,
   }));
 
   const COLORS = ['var(--color-primary)', 'var(--color-accent)', 'var(--color-chart-2)', 'var(--color-chart-3)', 'var(--color-chart-4)'];
 
   return (
     <div className="bg-card rounded-lg border border-border p-6">
-      <h2 className="text-xl font-semibold text-foreground mb-4">Production Distribution</h2>
+      <h2 className="text-xl font-semibold text-foreground mb-4">Distribución de Producción</h2>
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie

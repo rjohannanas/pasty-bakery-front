@@ -8,7 +8,6 @@ import { Loader2, Save, X } from 'lucide-react';
 interface MatrixItem {
   id: string;
   name: string;
-  value?: number;
 }
 
 interface MatrixEditorProps {
@@ -16,36 +15,60 @@ interface MatrixEditorProps {
   rows: MatrixItem[];
   columns: MatrixItem[];
   matrixType: 'Q' | 'T' | 'CM';
+  initialValues: Record<string, Record<string, number>>;
   onSave: (productId: string, itemId: string, value: number) => Promise<void>;
 }
 
-export function MatrixEditor({ title, rows, columns, matrixType, onSave }: MatrixEditorProps) {
+export function MatrixEditor({ title, rows, columns, matrixType, initialValues, onSave }: MatrixEditorProps) {
   const [editing, setEditing] = useState<Record<string, Record<string, number>>>({});
   const [isSaving, setIsSaving] = useState(false);
 
-  const getUnit = () => {
-    if (matrixType === 'Q') return 'kg';
-    if (matrixType === 'T') return 'min';
-    return 'units';
-  };
-
   const handleCellChange = (rowId: string, colId: string, value: number) => {
-    if (!editing[rowId]) {
-      editing[rowId] = {};
-    }
-    editing[rowId][colId] = Math.max(0, value);
+    setEditing((prev) => ({
+      ...prev,
+      [rowId]: {
+        ...(prev[rowId] ?? {}),
+        [colId]: Math.max(0, value),
+      },
+    }));
   };
 
   const handleSaveCell = async (rowId: string, itemId: string) => {
     if (!editing[rowId] || editing[rowId][itemId] === undefined) return;
+    const value = editing[rowId][itemId];
 
     setIsSaving(true);
     try {
-      await onSave(rowId, itemId, editing[rowId][itemId]);
-      toast.success('Cell saved successfully');
+      await onSave(rowId, itemId, value);
+      setEditing((prev) => {
+        const next = { ...prev, [rowId]: { ...prev[rowId] } };
+        delete next[rowId][itemId];
+        if (Object.keys(next[rowId]).length === 0) delete next[rowId];
+        return next;
+      });
     } catch (error) {
       console.error('[v0] Error saving cell:', error);
-      toast.error('Failed to save cell');
+      toast.error('No se pudo guardar la celda');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveAll = async () => {
+    setIsSaving(true);
+    try {
+      const tasks: Promise<void>[] = [];
+      for (const rowId of Object.keys(editing)) {
+        for (const colId of Object.keys(editing[rowId])) {
+          tasks.push(onSave(rowId, colId, editing[rowId][colId]));
+        }
+      }
+      await Promise.all(tasks);
+      setEditing({});
+      toast.success('Cambios guardados');
+    } catch (error) {
+      console.error('[v0] Error saving matrix:', error);
+      toast.error('No se pudieron guardar todos los cambios');
     } finally {
       setIsSaving(false);
     }
@@ -57,9 +80,6 @@ export function MatrixEditor({ title, rows, columns, matrixType, onSave }: Matri
     <div className="bg-card rounded-lg border border-border p-6 space-y-4">
       <div>
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Unit: <strong>{getUnit()}</strong>
-        </p>
       </div>
 
       <div className="overflow-x-auto">
@@ -67,7 +87,7 @@ export function MatrixEditor({ title, rows, columns, matrixType, onSave }: Matri
           <thead>
             <tr>
               <th className="border border-border bg-muted p-2 text-left text-sm font-semibold text-foreground">
-                {matrixType === 'Q' ? 'Product' : matrixType === 'T' ? 'Product' : 'Product'}
+                Producto
               </th>
               {columns.map((col) => (
                 <th
@@ -92,7 +112,7 @@ export function MatrixEditor({ title, rows, columns, matrixType, onSave }: Matri
                         type="number"
                         min="0"
                         step="0.01"
-                        defaultValue={row.value || 0}
+                        defaultValue={initialValues[row.id]?.[col.id] || 0}
                         onChange={(e) =>
                           handleCellChange(row.id, col.id, parseFloat(e.target.value) || 0)
                         }
@@ -113,21 +133,22 @@ export function MatrixEditor({ title, rows, columns, matrixType, onSave }: Matri
         <div className="flex gap-2 justify-end">
           <Button variant="outline" onClick={() => setEditing({})}>
             <X className="w-4 h-4 mr-2" />
-            Cancel
+            Cancelar
           </Button>
           <Button
             className="bg-primary hover:bg-primary/90"
+            onClick={handleSaveAll}
             disabled={isSaving}
           >
             {isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
+                Guardando...
               </>
             ) : (
               <>
                 <Save className="w-4 h-4 mr-2" />
-                Save All Changes
+                Guardar todo
               </>
             )}
           </Button>

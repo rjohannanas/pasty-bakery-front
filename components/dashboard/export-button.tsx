@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { exportToCSV, exportToPDF } from '@/lib/export';
 import { toast } from 'sonner';
-import type { OptimizationResult } from '@/lib/api';
+import type { Optimization } from '@/lib/api';
 import { Download, FileText, Table2 } from 'lucide-react';
 
 interface ExportButtonProps {
-  data: OptimizationResult;
+  data: Optimization;
 }
 
 export function ExportButton({ data }: ExportButtonProps) {
@@ -19,10 +19,10 @@ export function ExportButton({ data }: ExportButtonProps) {
     try {
       setIsLoading(true);
       exportToCSV(data);
-      toast.success('Production plan exported as CSV');
+      toast.success('Plan de producción exportado como CSV');
       setIsOpen(false);
     } catch (error) {
-      toast.error('Failed to export CSV');
+      toast.error('No se pudo exportar el CSV');
       console.error('[v0] CSV export error:', error);
     } finally {
       setIsLoading(false);
@@ -33,10 +33,10 @@ export function ExportButton({ data }: ExportButtonProps) {
     try {
       setIsLoading(true);
       await exportToPDF('dashboard-export', `production-plan-${new Date().toISOString().split('T')[0]}.pdf`);
-      toast.success('Production plan exported as PDF');
+      toast.success('Plan de producción exportado como PDF');
       setIsOpen(false);
     } catch (error) {
-      toast.error('Failed to export PDF');
+      toast.error('No se pudo exportar el PDF');
       console.error('[v0] PDF export error:', error);
     } finally {
       setIsLoading(false);
@@ -50,7 +50,7 @@ export function ExportButton({ data }: ExportButtonProps) {
         onClick={() => setIsOpen(!isOpen)}
       >
         <Download className="w-4 h-4" />
-        Export Report
+        Exportar Reporte
       </Button>
 
       {isOpen && (
@@ -66,7 +66,7 @@ export function ExportButton({ data }: ExportButtonProps) {
               className="w-full px-4 py-2 text-left text-sm hover:bg-muted flex items-center gap-2 text-foreground disabled:opacity-50"
             >
               <Table2 className="w-4 h-4" />
-              Export as CSV
+              Exportar como CSV
             </button>
             <button
               onClick={handlePDFExport}
@@ -74,7 +74,7 @@ export function ExportButton({ data }: ExportButtonProps) {
               className="w-full px-4 py-2 text-left text-sm hover:bg-muted flex items-center gap-2 text-foreground border-t border-border disabled:opacity-50"
             >
               <FileText className="w-4 h-4" />
-              Export as PDF
+              Exportar como PDF
             </button>
           </div>
         </>

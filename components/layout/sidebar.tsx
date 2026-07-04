@@ -12,13 +12,15 @@ import {
   History,
   Menu,
   X,
+  Croissant,
+  Zap,
 } from 'lucide-react';
 
 const navigationItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/optimize', label: 'Optimize', icon: LayoutDashboard },
-  { href: '/config', label: 'Configuration', icon: Settings },
-  { href: '/history', label: 'History', icon: History },
+  { href: '/optimize', label: 'Optimizar', icon: Zap },
+  { href: '/config', label: 'Configuración', icon: Settings },
+  { href: '/history', label: 'Historial', icon: History },
 ];
 
 export function Sidebar() {
@@ -37,7 +39,7 @@ export function Sidebar() {
           <div className="flex items-center justify-between h-16 px-6 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
-                <span className="text-white font-bold text-sm">PB</span>
+                <Croissant className="w-5 h-5 text-primary-foreground" />
               </div>
               <span className="font-bold text-lg text-sidebar-foreground">Pasty Bakery</span>
             </div>
@@ -55,10 +57,10 @@ export function Sidebar() {
             {navigationItems.map(({ href, label, icon: Icon }) => (
               <Link key={href} href={href}>
                 <Button
-                  variant={pathname === href ? 'default' : 'ghost'}
+                  variant={pathname === href || pathname.startsWith(href + '/') ? 'default' : 'ghost'}
                   className={cn(
                     'w-full justify-start gap-3',
-                    pathname === href
+                    pathname === href || pathname.startsWith(href + '/')
                       ? 'bg-primary text-primary-foreground'
                       : 'text-sidebar-foreground hover:bg-sidebar-accent'
                   )}

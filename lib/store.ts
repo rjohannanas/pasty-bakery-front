@@ -1,19 +1,9 @@
 import { create } from 'zustand';
-import type { OptimizationResult } from './api';
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'admin' | 'operator';
-}
+import type { Optimization } from './api';
 
 export interface AppState {
-  user: User | null;
-  setUser: (user: User | null) => void;
-
-  currentOptimization: OptimizationResult | null;
-  setCurrentOptimization: (result: OptimizationResult | null) => void;
+  currentOptimization: Optimization | null;
+  setCurrentOptimization: (result: Optimization | null) => void;
 
   optimizationStatus: 'idle' | 'running' | 'completed' | 'failed';
   setOptimizationStatus: (status: 'idle' | 'running' | 'completed' | 'failed') => void;
@@ -21,17 +11,14 @@ export interface AppState {
   optimizationError: string | null;
   setOptimizationError: (error: string | null) => void;
 
-  historicalResults: OptimizationResult[];
-  setHistoricalResults: (results: OptimizationResult[]) => void;
+  historicalResults: Optimization[];
+  setHistoricalResults: (results: Optimization[]) => void;
 
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  user: null,
-  setUser: (user) => set({ user }),
-
   currentOptimization: null,
   setCurrentOptimization: (result) => set({ currentOptimization: result }),
 
