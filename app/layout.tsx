@@ -7,8 +7,13 @@ const geistSans = Geist({ subsets: ['latin'] });
 const geistMono = Geist_Mono({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Pasty Bakery - Production Optimization',
-  description: 'Production optimization system for Pasty Bakery',
+  title: 'Pasty Bakery - Optimización de Producción',
+  description: 'Sistema de optimización de producción para Pasty Bakery',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
