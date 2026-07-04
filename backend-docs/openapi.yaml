@@ -619,6 +619,8 @@ components:
         quantity_to_produce: { type: number, minimum: 0, description: LINGO X }
         batch_active: { type: number, minimum: 0, description: "LINGO Y (@GIN, entero ≥0)" }
         variety_flag: { type: number, enum: [0, 1], description: "LINGO W (@BIN)" }
+        allowable_increase: { type: [number, "null"], description: "Aumento permisible de coeficiente de ganancia" }
+        allowable_decrease: { type: [number, "null"], description: "Disminución permisible de coeficiente de ganancia" }
         expected_profit: { type: number }
 
     JobStatus:

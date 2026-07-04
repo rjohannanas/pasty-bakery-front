@@ -8,13 +8,14 @@ function escapeCsvField(value: unknown): string {
 }
 
 export function exportToCSV(data: Optimization) {
-  const headers = ['Producto', 'Cantidad a producir', 'Lotes activos', 'Activo', 'Ganancia esperada'];
+  const headers = ['Producto', 'Cantidad a producir', 'Lotes activos', 'Aumento Permisible', 'Disminución Permisible', 'Ganancia esperada'];
 
   const rows = (data.results ?? []).map((row) => [
     row.product_name ?? row.product?.name ?? `Producto #${row.product_id ?? row.id}`,
     row.quantity_to_produce,
     row.batch_active,
-    (row.variety_flag ?? 0) > 0 ? 'Sí' : 'No',
+    row.allowable_increase === null || row.allowable_increase === undefined ? 'Sin límite' : `+$${row.allowable_increase.toFixed(2)}`,
+    row.allowable_decrease === null || row.allowable_decrease === undefined ? 'Sin límite' : `-$${row.allowable_decrease.toFixed(2)}`,
     row.expected_profit.toFixed(2),
   ]);
 

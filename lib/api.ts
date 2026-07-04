@@ -23,6 +23,8 @@ export type OperationalResource = Schema<'OperationalResource'>;
 export type JobStatus = Schema<'OptimizationStatus'>;
 export type OptimizationResultRow = Schema<'OptimizationResult'> & {
   product?: Product;
+  allowable_increase?: number | null;
+  allowable_decrease?: number | null;
 };
 export type Optimization = Schema<'Optimization'> & {
   id: number;
