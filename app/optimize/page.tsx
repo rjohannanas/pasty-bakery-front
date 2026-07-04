@@ -34,6 +34,8 @@ export default function OptimizePage() {
 
   const [maxProduction, setMaxProduction] = useState(200);
   const [minVariety, setMinVariety] = useState(7);
+  const [useIntegerVars, setUseIntegerVars] = useState(true);
+  const [useBinaryVars, setUseBinaryVars] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [jobStatus, setJobStatus] = useState<JobStatus | 'idle'>('idle');
 
@@ -167,7 +169,9 @@ export default function OptimizePage() {
       const job = await apiClient.runOptimization({
         scenario_id: stock.scenario_id,
         max_production: maxProduction,
-        min_variety: minVariety,
+        ...(useBinaryVars ? { min_variety: minVariety } : {}),
+        use_integer_vars: useIntegerVars,
+        use_binary_vars: useBinaryVars,
       });
       logEvent('info', 'optimize', 'Optimization job queued', {
         scenario_id: stock.scenario_id,
@@ -319,13 +323,40 @@ export default function OptimizePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground">Variedad mínima requerida</label>
+                  <label className="text-sm font-medium text-foreground flex items-center justify-between">
+                    <span>Variedad mínima requerida</span>
+                    {!useBinaryVars && (
+                      <span className="text-xs text-muted-foreground font-normal">(Deshabilitado sin var. binarias)</span>
+                    )}
+                  </label>
                   <input
                     type="number"
                     value={minVariety}
+                    disabled={!useBinaryVars}
                     onChange={(e) => setMinVariety(parseFloat(e.target.value) || 0)}
-                    className="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 mt-1"
+                    className="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
+                </div>
+
+                <div className="pt-2 space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer text-sm font-medium text-foreground select-none">
+                    <input
+                      type="checkbox"
+                      checked={useIntegerVars}
+                      onChange={(e) => setUseIntegerVars(e.target.checked)}
+                      className="w-4 h-4 rounded border-input text-primary focus:ring-primary/50 accent-primary"
+                    />
+                    <span>Ejecutar con var. Enteras</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer text-sm font-medium text-foreground select-none">
+                    <input
+                      type="checkbox"
+                      checked={useBinaryVars}
+                      onChange={(e) => setUseBinaryVars(e.target.checked)}
+                      className="w-4 h-4 rounded border-input text-primary focus:ring-primary/50 accent-primary"
+                    />
+                    <span>Ejecutar con var. Binarias</span>
+                  </label>
                 </div>
               </div>
             </div>

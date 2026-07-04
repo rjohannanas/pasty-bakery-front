@@ -125,6 +125,8 @@ paths:
               properties:
                 max_production: { type: number, minimum: 0 }
                 min_variety: { type: integer, minimum: 0 }
+                use_integer_vars: { type: boolean, default: true, description: "Si es true, activa @GIN en X e Y. Si es false, X e Y son continuos." }
+                use_binary_vars: { type: boolean, default: true, description: "Si es true, activa @BIN en W y valida PRO. Si es false, W_i = 1 constante." }
       responses:
         "202":
           description: Job encolado

@@ -110,8 +110,10 @@ export interface LingoLog {
 
 export interface RunOptimizationParams {
   scenario_id?: number;
-  max_production: number;
-  min_variety: number;
+  max_production?: number;
+  min_variety?: number;
+  use_integer_vars?: boolean;
+  use_binary_vars?: boolean;
 }
 
 function normalizeApiError(response: Response, body: unknown) {
@@ -455,11 +457,19 @@ class ApiClient {
       scenario_id: scenarioId,
       max_production: params.max_production,
       min_variety: params.min_variety,
+      use_integer_vars: params.use_integer_vars,
+      use_binary_vars: params.use_binary_vars,
     });
-    return this.post(`/scenarios/${scenarioId}/optimize`, {
-      max_production: params.max_production,
-      min_variety: params.min_variety,
-    });
+
+    const payload: Record<string, unknown> = {};
+    if (params.max_production !== undefined) payload.max_production = params.max_production;
+    if (params.use_binary_vars !== false && params.min_variety !== undefined) {
+      payload.min_variety = params.min_variety;
+    }
+    if (params.use_integer_vars !== undefined) payload.use_integer_vars = params.use_integer_vars;
+    if (params.use_binary_vars !== undefined) payload.use_binary_vars = params.use_binary_vars;
+
+    return this.post(`/scenarios/${scenarioId}/optimize`, payload);
   }
 
   async getOptimizationStatus(jobId: string): Promise<Optimization> {
